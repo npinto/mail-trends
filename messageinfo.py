@@ -120,7 +120,7 @@ class MessageInfo(object):
     try:
       pieces = email.header.decode_header(value)
       unicode_pieces = \
-          [unicode(text, charset or "ascii") for text, charset in pieces]
+          [unicode(text, charset or "UTF-8") for text, charset in pieces]
       return u"".join(unicode_pieces)
     except LookupError:
       # Ignore bogus encodings
