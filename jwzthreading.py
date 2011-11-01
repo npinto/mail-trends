@@ -11,15 +11,18 @@ __revision__ = "$Id: jwzthreading.py,v 1.2 2003/03/26 13:45:11 akuchling Exp $"
 
 
 import re
+from collections import deque
 
 __all__ = ['Message', 'make_message', 'thread']
 
 class Container:
-    __slots__ = ['message', 'parent', 'children', 'id']
+    __slots__ = ['message', 'parent', 'children', 'id', 'length', 'visitedBy']
     def __init__ (self):
         self.message = self.parent = None
         self.children = []
         self.subject = None
+        self.length = 1
+        self.visitedBy = False
 
     def __repr__ (self):
         return '<%s %x: %r>' % (self.__class__.__name__, id(self),
@@ -33,26 +36,28 @@ class Container:
             child.parent.remove_child(child)
         self.children.append(child)
         child.parent = self
+        self.length += len(child)
         
     def remove_child (self, child):
         self.children.remove(child)
         child.parent = None
+        self.length -= len(child)
 
     def has_descendant (self, ctr):
-        if self is ctr:
-            return True
-        for c in self.children:
-            if c is ctr:
+        stack = deque()
+        stack.append(self)
+        while stack:
+            node = stack.pop()
+            node.visitedBy = ctr
+            if node is ctr:
                 return True
-            elif c.has_descendant(ctr):
-                return True
+            for child in node.children:
+                if child.visitedBy is not ctr:
+                     stack.append(child)
         return False
 
     def __len__(self):
-      count = 1
-      for c in self.children:
-        count += len(c)
-      return count
+        return max(1, self.length)
     
 def uniq(alist):
     set = {}
