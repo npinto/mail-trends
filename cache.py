@@ -2,7 +2,7 @@
 # http://python-twitter.googlecode.com/svn/trunk/twitter.py
 # Modified to pickle/unpickle data
 
-import md5
+from hashlib import md5
 import os
 import tempfile
 import cPickle

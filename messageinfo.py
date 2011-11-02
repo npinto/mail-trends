@@ -2,7 +2,7 @@ import email
 import email.utils
 import email.header
 import imaplib
-import md5
+from hashlib import md5
 import time
 
 import re
