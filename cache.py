@@ -1,4 +1,4 @@
-# Based on _FileCache from 
+# Based on _FileCache from
 # http://python-twitter.googlecode.com/svn/trunk/twitter.py
 # Modified to pickle/unpickle data
 

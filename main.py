@@ -18,53 +18,53 @@ import stats.table
 def GetOptsMap():
   opts, args = getopt.getopt(sys.argv[1:], "", [
       # Standard options
-      "username=", "password=", "use_ssl", "server=", 
+      "username=", "password=", "use_ssl", "server=",
 
       # Other params
       "filter_out=", "me=",
-      
+
       # Development options
-      "record", "replay", 
+      "record", "replay",
       "max_messages=", "random_subset",
       "skip_labels"])
-  
+
   opts_map = {}
   for name, value in opts:
     opts_map[name[2:]] = value
 
   assert "username" in opts_map
-  
+
   if "password" not in opts_map:
     opts_map["password"] = getpass.getpass(
         prompt="Password for %s: " % opts_map["username"])
-  
+
   assert "password" in opts_map
   assert "server" in opts_map
-  
+
   return opts_map
 
 def GetMessageInfos(opts):
   m = mail.Mail(
       opts["server"], "use_ssl" in opts, opts["username"], opts["password"],
-      "record" in opts, "replay" in opts, 
+      "record" in opts, "replay" in opts,
       "max_messages" in opts and int(opts["max_messages"]) or -1,
       "random_subset" in opts)
-  
+
   # First, get all message infos
   m.SelectAllMail()
-  
+
   message_infos = m.GetMessageInfos()
-  
-  # Then for each mailbox, see which messages are in it, and attach that to 
+
+  # Then for each mailbox, see which messages are in it, and attach that to
   # the mail info
   if "skip_labels" not in opts:
     message_infos_by_id = \
         dict([(mi.GetMessageId(), mi) for mi in message_infos])
-    
+
     # Don't want to parse all these dates, since we already have them from the
     # message infos above.
     messageinfo.MessageInfo.SetParseDate(False)
-    
+
     for mailbox in m.GetMailboxes():
       m.SelectMailbox(mailbox)
       message_ids = m.GetMessageIds()
@@ -72,33 +72,33 @@ def GetMessageInfos(opts):
         if mid in message_infos_by_id:
           message_info = message_infos_by_id[mid]
           message_info.AddMailbox(mailbox)
-  
+
     messageinfo.MessageInfo.SetParseDate(True)
 
   m.Logout()
-  
+
   # Filter out those that we're not interested in
   if "filter_out" in opts:
     message_infos = FilterMessageInfos(message_infos, opts["filter_out"])
-  
+
   # Tag messages as being from the user running the script
   if "me" in opts:
     logging.info("Identifying \"me\" messages")
     me_addresses = [
         address.lower().strip() for address in opts["me"].split(",")]
-    
+
     me_from_count = 0
     me_to_count = 0
-    
+
     for message_info in message_infos:
       name, address = message_info.GetSender()
-      
+
       for me_address in me_addresses:
         if me_address == address:
           message_info.is_from_me = True
           me_from_count += 1
           break
-          
+
       for name, address in message_info.GetRecipients():
         for me_address in me_addresses:
           if me_address == address:
@@ -106,22 +106,22 @@ def GetMessageInfos(opts):
             me_to_count += 1
             break
         if message_info.is_to_me: break
-            
+
     logging.info("  %d messages are from \"me\"" % me_from_count)
     logging.info("  %d messages are to \"me\"" % me_to_count)
-  
+
   return message_infos
 
 def FilterMessageInfos(message_infos, filter_param):
   logging.info("Filtering messages")
   remaining_message_infos = []
-  
+
   filters = []
   raw_filters = filter_param.split(",")
   for raw_filter in raw_filters:
     operator, value = raw_filter.strip().split(":", 1)
     filters.append([operator, value.lower()])
-  
+
   for message_info in message_infos:
     filtered_out = False
     for operator, operator_value in filters:
@@ -141,10 +141,10 @@ def FilterMessageInfos(message_infos, filter_param):
         if value.find(operator_value) != -1:
           filtered_out = True
           break
-      
+
       if filtered_out:
         break
-    
+
     if not filtered_out:
       remaining_message_infos.append(message_info)
 
@@ -158,9 +158,9 @@ def ExtractThreads(message_infos):
     if thread_message:
       thread_message.message_info = message_info
       thread_messages.append(thread_message)
-      
+
   thread_dict = jwzthreading.thread(thread_messages)
-  
+
   containers = []
   for subject, container in thread_dict.items():
     # jwzthreading is too aggressive in threading by subject and will combine
@@ -173,7 +173,7 @@ def ExtractThreads(message_infos):
     else:
       container.subject = subject
       containers.append(container)
-    
+
   return containers
 
 def InitStats(date_range):
@@ -218,11 +218,11 @@ def InitStats(date_range):
         "Me",
         stats.group.StatColumnGroup(
           stats.table.MeRecipientTableStat(),
-          stats.group.MeRecipientDistributionStatCollection(date_range),          
+          stats.group.MeRecipientDistributionStatCollection(date_range),
         ),
         stats.group.StatColumnGroup(
           stats.table.MeSenderTableStat(),
-          stats.group.MeSenderDistributionStatCollection(date_range),          
+          stats.group.MeSenderDistributionStatCollection(date_range),
         ),
       ),
       (
@@ -238,7 +238,7 @@ def InitStats(date_range):
       )
     )
   ]
-  
+
   return s
 
 logging.basicConfig(level=logging.DEBUG,

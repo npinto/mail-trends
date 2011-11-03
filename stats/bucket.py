@@ -6,36 +6,36 @@ _Y_AXIS_SPACE = 36
 
 class BucketStat(ChartStat):
   def __init__(self, bucket_count, title, width, height):
-    ChartStat.__init__(self) 
-    
+    ChartStat.__init__(self)
+
     self.__buckets = [0] * bucket_count
     self.__max = 0
-    
+
     self.__title = title
     self.__width = width
     self.__height = height
- 
+
   def _GetBucketCollection(self, message_infos, threads):
     return message_infos
- 
+
   def ProcessMessageInfos(self, message_infos, threads):
     for bucket_obj in self._GetBucketCollection(message_infos, threads):
       bucket = self._GetBucket(bucket_obj)
-      
+
       if bucket is None: continue
-      
+
       self.__buckets[bucket] += 1
-      
+
       v = self.__buckets[bucket]
       if v > self.__max:
         self.__max = v
-   
+
   def GetHtml(self):
     max = self._GetRescaledMax(self.__max)
     w = self.__width
     h = self.__height
-    
-    # We don't really care about StackedVerticalBarChart vs. 
+
+    # We don't really care about StackedVerticalBarChart vs.
     # GroupedVerticalBarChart since we just have one data-set, but only the
     # stacked graph seems to respect the bar spacing option
     chart = StackedVerticalBarChart(w, h)
@@ -47,11 +47,11 @@ class BucketStat(ChartStat):
 
     chart.set_bar_width(bar_width)
     chart.set_bar_spacing(space_width)
-    
+
     chart.add_data(self._GetRescaledData(self.__buckets, max))
     chart.set_axis_range(Axis.LEFT, 0, max)
     chart.set_axis_labels(Axis.BOTTOM, self._GetBucketLabels())
-    
+
     # We render the title in the template instead of in the chart, to give
     # stat collections and individual stats similar appearance
     t = Template(
@@ -64,11 +64,11 @@ class BucketStat(ChartStat):
           "chart_url": chart.get_url()
         })
     return unicode(t)
-    
+
 class TimeOfDayStat(BucketStat):
   def __init__(self):
     BucketStat.__init__(self, 24, 'Time of day', 400, 200)
-  
+
   def _GetBucket(self, message_info):
     return message_info.GetDate().tm_hour
 
@@ -82,12 +82,12 @@ class DayOfWeekStat(BucketStat):
   def __init__(self):
     BucketStat.__init__(self, 7, 'Day of week', 300, 200)
 
-  
+
   def _GetBucket(self, message_info):
     # In the time tuple Monday is 0, but we want Sunday to be 0
     return (message_info.GetDate().tm_wday + 1) % 7
-    
-    
+
+
   def _GetBucketLabels(self):
     return ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -96,16 +96,16 @@ class YearStat(BucketStat):
     self.__years = GetYearRange(date_range)
 
     width = _Y_AXIS_SPACE + 30 * len(self.__years)
-    
+
     BucketStat.__init__(
         self, len(self.__years), "Year", width, 200)
-    
+
   def _GetBucket(self, message_info):
     return message_info.GetDate().tm_year - self.__years[0]
-  
+
   def _GetBucketLabels(self):
     return [str(x) for x in self.__years]
-    
+
 class MonthStat(BucketStat):
   def __init__(self, year):
     self.__year = year
@@ -114,12 +114,12 @@ class MonthStat(BucketStat):
 
   def _GetBucket(self, message_info):
     date = message_info.GetDate()
-    
+
     if date.tm_year == self.__year:
       return date.tm_mon - 1
     else:
       return None
-      
+
   def _GetBucketLabels(self):
     return MONTH_NAMES
 
@@ -130,20 +130,20 @@ class DayStat(BucketStat):
     self.__days_in_month = calendar.monthrange(year, month)[1]
     # No title is necessary, since the stat collection provides one
     BucketStat.__init__(
-        self, 
+        self,
         self.__days_in_month,
-        None, 
+        None,
         500,
         200)
-        
+
   def _GetBucket(self, message_info):
     date = message_info.GetDate()
-    
+
     if date.tm_year == self.__year and date.tm_mon == self.__month:
       return date.tm_mday - 1
     else:
       return None
-      
+
   def _GetBucketLabels(self):
     return [str(d) for d in range(1, self.__days_in_month + 1)]
 
@@ -166,7 +166,7 @@ class SizeBucketStat(BucketStat):
     1 << 22,
     1 << 23,
   ]
-  
+
   def __init__(self):
     BucketStat.__init__(
       self,
@@ -177,11 +177,11 @@ class SizeBucketStat(BucketStat):
 
   def _GetBucket(self, message_info):
     size = message_info.size
-    
+
     for i in reversed(xrange(0, len(SizeBucketStat._SIZE_BUCKETS))):
       if size >= SizeBucketStat._SIZE_BUCKETS[i]:
         return i
-  
+
   def _GetBucketLabels(self):
     return [GetDisplaySize(s) for s in SizeBucketStat._SIZE_BUCKETS]
 
@@ -205,24 +205,24 @@ class ThreadSizeBucketStat(BucketStat):
     150,
     200,
   ]
-  
+
   def __init__(self):
     BucketStat.__init__(
       self,
-      len(ThreadSizeBucketStat._SIZE_BUCKETS),      
+      len(ThreadSizeBucketStat._SIZE_BUCKETS),
       "Thread lengths",
       500,
       200)
-      
+
   def _GetBucketCollection(self, message_infos, threads):
-    return threads      
-  
+    return threads
+
   def _GetBucket(self, thread):
     size = len(thread)
-    
+
     for i in reversed(xrange(0, len(ThreadSizeBucketStat._SIZE_BUCKETS))):
       if size >= ThreadSizeBucketStat._SIZE_BUCKETS[i]:
         return i
 
   def _GetBucketLabels(self):
-    return [str(s) for s in ThreadSizeBucketStat._SIZE_BUCKETS]    
+    return [str(s) for s in ThreadSizeBucketStat._SIZE_BUCKETS]

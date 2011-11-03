@@ -27,7 +27,7 @@ class Container:
     def __repr__ (self):
         return '<%s %x: %r>' % (self.__class__.__name__, id(self),
                                 self.message)
-    
+
     def is_dummy (self):
         return self.message is None
 
@@ -37,7 +37,7 @@ class Container:
         self.children.append(child)
         child.parent = self
         self.length += len(child)
-        
+
     def remove_child (self, child):
         self.children.remove(child)
         child.parent = None
@@ -58,7 +58,7 @@ class Container:
 
     def __len__(self):
         return max(1, self.length)
-    
+
 def uniq(alist):
     set = {}
     return [set.setdefault(e,e) for e in alist if e not in set.keys()]
@@ -75,7 +75,7 @@ def make_message (msg):
     message.
     """
     new = Message(msg)
-    
+
     m = msgid_pat.search(msg.get("Message-ID", ""))
     if m is None:
         return None
@@ -101,7 +101,7 @@ def make_message (msg):
 class Message (object):
     __slots__ = [
         'message', 'message_id', 'references', 'subject', 'message_info']
-    
+
     def __init__(self, msg=None):
         self.message = msg
         self.message_id = None
@@ -145,7 +145,7 @@ def prune_container (container):
         # Leave this node in place
         return [container]
 
-        
+
 def thread (msglist):
     """thread([Message]) : {string:Container}
 
@@ -155,7 +155,7 @@ def thread (msglist):
     list of subtrees, so callers can then sort children by date or
     poster or whatever.
     """
-    
+
     id_table = {}
     for msg in msglist:
         # 1A
@@ -203,18 +203,18 @@ def thread (msglist):
     ##print 'before'
     ##for ctr in root_set:
     ##    print_container(ctr)
-        
+
     new_root_set = []
     for container in root_set:
         L = prune_container(container)
         new_root_set.extend(L)
 
     root_set = new_root_set
-    
+
     ##print '\n\nafter'
     ##for ctr in root_set:
     ##     print_container(ctr)
-        
+
     # 5. Group root set by subject
     subject_table = {}
     for container in root_set:
@@ -233,7 +233,7 @@ def thread (msglist):
             (existing.message is not None and
              container.message is None) or
             (existing.message is not None and
-             container.message is not None and 
+             container.message is not None and
              len(existing.message.subject) > len(container.message.subject))):
             subject_table[subj] = container
 
@@ -269,7 +269,7 @@ def thread (msglist):
             subject_table[subj] = new
 
     return subject_table
-        
+
 
 def print_container(ctr, depth=0, debug=0):
     import sys
@@ -284,10 +284,10 @@ def print_container(ctr, depth=0, debug=0):
     for c in ctr.children:
         print_container(c, depth+1)
 
-            
+
 def main():
     import mailbox
-    
+
     print 'Reading input file...'
     f = open("mbox")
     mbox = mailbox.UnixMailbox(f)
@@ -308,6 +308,6 @@ def main():
     L.sort()
     for subj, container in L:
         print_container(container)
-    
+
 if __name__ == "__main__":
     main()
