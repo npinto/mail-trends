@@ -1,4 +1,3 @@
-
 import imaplib
 import logging
 import random
@@ -7,211 +6,216 @@ import cache
 import messageinfo
 import stringscanner
 
+
 class Mail(object):
 
-  def __init__(self, server, use_ssl, username, password, record=False,
+    def __init__(self, server, use_ssl, username, password, record=False,
                  replay=False, max_messages=-1, random_subset=False):
-    self.__server = server
-    self.__username = username
-    self.__record = record
-    self.__replay = replay
-    self.__max_messages = max_messages
-    self.__random_subset = random_subset
 
-    self.__current_mailbox = None
+        self.__server = server
+        self.__username = username
+        self.__record = record
+        self.__replay = replay
+        self.__max_messages = max_messages
+        self.__random_subset = random_subset
 
-    if record or replay:
-        self.__cache = cache.FileCache()
+        self.__current_mailbox = None
 
-    imap_constructor = use_ssl and imaplib.IMAP4_SSL or imaplib.IMAP4
+        if record or replay:
+                self.__cache = cache.FileCache()
 
-    logging.info("Connecting")
+        imap_constructor = use_ssl and imaplib.IMAP4_SSL or imaplib.IMAP4
 
-    self.__mail = imap_constructor(server)
+        logging.info("Connecting")
 
-    logging.info("Logging in")
+        self.__mail = imap_constructor(server)
 
-    self.__mail.login(username, password)
+        logging.info("Logging in")
 
-    self.__prefix = None
+        self.__mail.login(username, password)
 
-  def GetPrefix(self):
+        self.__prefix = None
 
-    candidates = ["[Gmail]", "[Google Mail]"]
+    def GetPrefix(self):
 
-    if self.__prefix is None:
+        candidates = ["[Gmail]", "[Google Mail]"]
 
-      for candidate in candidates:
+        if self.__prefix is None:
 
-        logging.info("Trying prefix '%s'", candidate)
-        r, data = self.__mail.select(candidate + '/All Mail')
+            for candidate in candidates:
 
-        if r == "OK":
-          self.__prefix = candidate
-          break
+                logging.info("Trying prefix '%s'", candidate)
+                r, data = self.__mail.select(candidate + '/All Mail')
 
-    assert self.__prefix is not None
+                if r == "OK":
+                    self.__prefix = candidate
+                    break
 
-    return self.__prefix
+        assert self.__prefix is not None
 
-  def GetMailboxes(self):
-    logging.info("Getting mailboxes")
+        return self.__prefix
 
-    r, mailboxes_data = self.__mail.list()
-    self.__AssertOk(r)
+    def GetMailboxes(self):
+        logging.info("Getting mailboxes")
 
-    mailboxes = []
-    for mailbox_data in mailboxes_data:
-      s = stringscanner.StringScanner(mailbox_data)
+        r, mailboxes_data = self.__mail.list()
+        self.__AssertOk(r)
 
-      attributes = s.ConsumeValue()
-      s.ConsumeAll(" ")
-      delimiter = s.ConsumeValue()
-      s.ConsumeAll(" ")
-      name = s.ConsumeValue()
+        mailboxes = []
+        for mailbox_data in mailboxes_data:
+            s = stringscanner.StringScanner(mailbox_data)
 
-      if not "\\Noselect" in attributes and \
-          name.find(self.GetPrefix()) != 0:
-        mailboxes.append(name)
+            attributes = s.ConsumeValue()
+            s.ConsumeAll(" ")
+            delimiter = s.ConsumeValue()
+            s.ConsumeAll(" ")
+            name = s.ConsumeValue()
 
-    return mailboxes
+            if not "\\Noselect" in attributes and \
+                    name.find(self.GetPrefix()) != 0:
+                mailboxes.append(name)
 
-  def SelectAllMail(self):
-    self.SelectMailbox(self.GetPrefix() + '/All Mail')
+        return mailboxes
 
-  def SelectMailbox(self, mailbox):
-    logging.info("Selecting mailbox '%s'", mailbox)
-    r, data = self.__mail.select(mailbox)
-    self.__AssertOk(r)
+    def SelectAllMail(self):
+        self.SelectMailbox(self.GetPrefix() + '/All Mail')
 
-    self.__current_mailbox = mailbox
+    def SelectMailbox(self, mailbox):
+        logging.info("Selecting mailbox '%s'", mailbox)
+        r, data = self.__mail.select(mailbox)
+        self.__AssertOk(r)
 
-  def GetMessageIds(self):
-    message_infos = self.__UidFetch("ALL", "(INTERNALDATE RFC822.SIZE)")
+        self.__current_mailbox = mailbox
 
-    return [m.GetMessageId() for m in message_infos]
+    def GetMessageIds(self):
+        message_infos = self.__UidFetch("ALL", "(INTERNALDATE RFC822.SIZE)")
 
-  def GetMessageInfos(self):
-    return self.__UidFetch(
-        "ALL",
-        "(UID FLAGS INTERNALDATE RFC822.SIZE RFC822.HEADER)",
-        self.__max_messages)
+        return [m.GetMessageId() for m in message_infos]
 
-  def Logout(self):
-    logging.info("Logging out")
+    def GetMessageInfos(self):
+        return self.__UidFetch(
+                "ALL",
+                "(UID FLAGS INTERNALDATE RFC822.SIZE RFC822.HEADER)",
+                self.__max_messages)
 
-    self.__mail.close()
-    self.__mail.logout()
+    def Logout(self):
+        logging.info("Logging out")
 
-  def __UidFetch(self, search_criterion, fetch_parts, max_fetch=-1):
-    logging.info("Fetching message infos")
+        self.__mail.close()
+        self.__mail.logout()
 
-    logging.info("  Fetching message list")
-    data = self.__UidCommand("SEARCH", search_criterion)
+    def __UidFetch(self, search_criterion, fetch_parts, max_fetch=-1):
+        logging.info("Fetching message infos")
 
-    message_ids = data[0].split()
+        logging.info("  Fetching message list")
+        data = self.__UidCommand("SEARCH", search_criterion)
 
-    logging.info("  %d messages were listed" % len(message_ids))
+        message_ids = data[0].split()
 
-    if max_fetch != -1 and len(message_ids) > max_fetch:
-      if self.__random_subset:
-        # Pick random sample when there is a max, so that we get more
-        # interesting data. However, use the same seed so that runs will be
-        # deterministic and we can take advantage of record/replay
-        random.seed(len(message_ids))
+        logging.info("  %d messages were listed" % len(message_ids))
 
-        # If possible, select a random sample from a recent subset of messages
-        subset_size = max_fetch * 30
-        if len(message_ids) > subset_size:
-          message_ids = message_ids[-subset_size - 1:-1]
+        if max_fetch != -1 and len(message_ids) > max_fetch:
+            if self.__random_subset:
+                # Pick random sample when there is a max, so that we get more
+                # interesting data. However, use the same seed so that runs
+                # will be deterministic and we can take advantage of
+                # record/replay
+                random.seed(len(message_ids))
 
-        message_ids = random.sample(message_ids, max_fetch)
-      else:
-        message_ids = message_ids[-max_fetch - 1:-1]
+                # If possible, select a random sample from a recent subset of
+                # messages
+                subset_size = max_fetch * 30
+                if len(message_ids) > subset_size:
+                    message_ids = message_ids[-subset_size - 1:-1]
 
-    message_infos = []
+                message_ids = random.sample(message_ids, max_fetch)
+            else:
+                message_ids = message_ids[-max_fetch - 1:-1]
 
-    # Fetch in smaller chunks, so that record/replay can be used when fetches
-    # fail (to allow caching of successful chunks) and to have better progress
-    # display
-    chunk_size = fetch_parts.find("HEADER") != -1 and 1000 or 100000
+        message_infos = []
 
-    for i in xrange(0, len(message_ids), chunk_size):
-      chunk_start = i
-      chunk_end = i + chunk_size
-      if chunk_end > len(message_ids):
-        chunk_end = len(message_ids)
+        # Fetch in smaller chunks, so that record/replay can be used when
+        # fetches fail (to allow caching of successful chunks) and to have
+        # better progress
+        # display
+        chunk_size = fetch_parts.find("HEADER") != -1 and 1000 or 100000
 
-      chunk_message_ids = message_ids[chunk_start:chunk_end]
+        for i in xrange(0, len(message_ids), chunk_size):
+            chunk_start = i
+            chunk_end = i + chunk_size
+            if chunk_end > len(message_ids):
+                chunk_end = len(message_ids)
 
-      logging.info("  Fetching info for %d messages (%d/%d)",
-          len(chunk_message_ids),
-          chunk_end,
-          len(message_ids))
+            chunk_message_ids = message_ids[chunk_start:chunk_end]
 
-      fetch_reply = self.__UidCommand(
-          "FETCH",
-          ",".join(chunk_message_ids),
-          fetch_parts)
+            logging.info("  Fetching info for %d messages (%d/%d)",
+                    len(chunk_message_ids),
+                    chunk_end,
+                    len(message_ids))
 
-      logging.info("  Parsing replies")
+            fetch_reply = self.__UidCommand(
+                    "FETCH",
+                    ",".join(chunk_message_ids),
+                    fetch_parts)
 
-      message_infos.extend(self.__ParseFetchReply(fetch_reply))
+            logging.info("  Parsing replies")
 
-    logging.info("  Got %d message infos" % len(message_infos))
+            message_infos.extend(self.__ParseFetchReply(fetch_reply))
 
-    return message_infos
+        logging.info("  Got %d message infos" % len(message_infos))
 
-  def __UidCommand(self, command, *args):
-    if self.__record or self.__replay:
-      cache_key = "%s-%s-%s-%s-%s" % (
-          self.__server, self.__username, self.__current_mailbox,
-          command, " ".join(args))
+        return message_infos
 
-    if self.__replay:
-      cached_response = self.__cache.Get(cache_key)
-      if cached_response:
-        return cached_response
+    def __UidCommand(self, command, *args):
+        if self.__record or self.__replay:
+            cache_key = "%s-%s-%s-%s-%s" % (
+                    self.__server, self.__username, self.__current_mailbox,
+                    command, " ".join(args))
 
-    r, data = self.__mail.uid(command, *args)
-    self.__AssertOk(r)
+        if self.__replay:
+            cached_response = self.__cache.Get(cache_key)
+            if cached_response:
+                return cached_response
 
-    if self.__record:
-      self.__cache.Set(cache_key, data)
+        r, data = self.__mail.uid(command, *args)
+        self.__AssertOk(r)
 
-    return data
+        if self.__record:
+            self.__cache.Set(cache_key, data)
 
-  def __ParseFetchReply(self, fetch_reply):
-    s = stringscanner.StringScanner(fetch_reply)
+        return data
 
-    message_infos = []
+    def __ParseFetchReply(self, fetch_reply):
+        s = stringscanner.StringScanner(fetch_reply)
 
-    while s.Peek():
-      current_message_info = messageinfo.MessageInfo()
-      message_infos.append(current_message_info)
+        message_infos = []
 
-      # The sequence ID is first, with all the data in parentheses
-      sequence_id = s.ReadUntil(" ")
-      s.ConsumeAll(" ")
+        while s.Peek():
+            current_message_info = messageinfo.MessageInfo()
+            message_infos.append(current_message_info)
 
-      s.ConsumeChar("(")
+            # The sequence ID is first, with all the data in parentheses
+            sequence_id = s.ReadUntil(" ")
+            s.ConsumeAll(" ")
 
-      while s.Peek() != ")":
-        s.ConsumeAll(" ")
-        name = s.ReadUntil(" ")
-        s.ConsumeAll(" ")
+            s.ConsumeChar("(")
 
-        value = s.ConsumeValue()
+            while s.Peek() != ")":
+                s.ConsumeAll(" ")
+                name = s.ReadUntil(" ")
+                s.ConsumeAll(" ")
 
-        current_message_info.PopulateField(name, value)
+                value = s.ConsumeValue()
 
-      s.ConsumeChar(")")
+                current_message_info.PopulateField(name, value)
 
-    return message_infos
+            s.ConsumeChar(")")
 
-  def __AssertOk(self, response):
-    assert response == "OK", "response=%s" % response
+        return message_infos
 
-# vim: set tabstop=2 softtabstop=2 shiftwidth=2:
+    def __AssertOk(self, response):
+        assert response == "OK", "response=%s" % response
+
+# vim: set tabstop=4 softtabstop=4 shiftwidth=4:
 # vim: set expandtab:
 # vim: set smarttab:
