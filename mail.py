@@ -1,3 +1,4 @@
+
 import imaplib
 import logging
 import random
@@ -6,12 +7,10 @@ import cache
 import messageinfo
 import stringscanner
 
-MAILBOX_GMAIL_ALL_MAIL = "[Gmail]/All Mail"
-MAILBOX_GMAIL_PREFIX = "[Gmail]"
-
 class Mail(object):
-  def __init__(self, server, use_ssl, username, password,
-      record=False, replay=False, max_messages=-1, random_subset=False):
+
+  def __init__(self, server, use_ssl, username, password, record=False,
+                 replay=False, max_messages=-1, random_subset=False):
     self.__server = server
     self.__username = username
     self.__record = record
@@ -22,7 +21,7 @@ class Mail(object):
     self.__current_mailbox = None
 
     if record or replay:
-      self.__cache = cache.FileCache()
+        self.__cache = cache.FileCache()
 
     imap_constructor = use_ssl and imaplib.IMAP4_SSL or imaplib.IMAP4
 
@@ -33,6 +32,27 @@ class Mail(object):
     logging.info("Logging in")
 
     self.__mail.login(username, password)
+
+    self.__prefix = None
+
+  def GetPrefix(self):
+
+    candidates = ["[Gmail]", "[Google Mail]"]
+
+    if self.__prefix is None:
+
+      for candidate in candidates:
+
+        logging.info("Trying prefix '%s'", candidate)
+        r, data = self.__mail.select(candidate + '/All Mail')
+
+        if r == "OK":
+          self.__prefix = candidate
+          break
+
+    assert self.__prefix is not None
+
+    return self.__prefix
 
   def GetMailboxes(self):
     logging.info("Getting mailboxes")
@@ -51,13 +71,13 @@ class Mail(object):
       name = s.ConsumeValue()
 
       if not "\\Noselect" in attributes and \
-          name.find(MAILBOX_GMAIL_PREFIX) != 0:
+          name.find(self.GetPrefix()) != 0:
         mailboxes.append(name)
 
     return mailboxes
 
   def SelectAllMail(self):
-    self.SelectMailbox(MAILBOX_GMAIL_ALL_MAIL)
+    self.SelectMailbox(self.GetPrefix() + '/All Mail')
 
   def SelectMailbox(self, mailbox):
     logging.info("Selecting mailbox '%s'", mailbox)
@@ -191,3 +211,7 @@ class Mail(object):
 
   def __AssertOk(self, response):
     assert response == "OK", "response=%s" % response
+
+# vim: set tabstop=2 softtabstop=2 shiftwidth=2:
+# vim: set expandtab:
+# vim: set smarttab:
