@@ -4,7 +4,11 @@
     <select onchange="toggleStatCollectionSelection(this)">
     #for $i in range(0, len($stats))
       #if $stats[$i]
-        <option value="$stats[$i].id">
+        #if $i == len($stats) - 1
+          <option value="$stats[$i].id" selected="selected">
+        #else
+          <option value="$stats[$i].id">
+        #end if
           $titles[$i]
         </option>      
       #else
