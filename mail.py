@@ -190,4 +190,4 @@ class Mail(object):
     return message_infos
 
   def __AssertOk(self, response):
-    assert response == "OK", "response=" % response
+    assert response == "OK", "response=%s" % response
