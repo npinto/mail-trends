@@ -53,7 +53,7 @@ class Container:
                 return True
             for child in node.children:
                 if child.visitedBy is not ctr:
-                     stack.append(child)
+                    stack.append(child)
         return False
 
     def __len__(self):

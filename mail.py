@@ -22,7 +22,7 @@ class Mail(object):
         self.__current_mailbox = None
 
         if record or replay:
-                self.__cache = cache.FileCache()
+            self.__cache = cache.FileCache()
 
         imap_constructor = use_ssl and imaplib.IMAP4_SSL or imaplib.IMAP4
 
