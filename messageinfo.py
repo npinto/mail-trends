@@ -51,7 +51,7 @@ class MessageInfo(object):
 
     def GetMessageId(self):
         if not self.__message_id:
-            d = md5.new()
+            d = md5()
             d.update(str(self.size))
             d.update(self.__date_string)
             self.__message_id = d.digest()
