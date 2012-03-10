@@ -21,7 +21,7 @@ def GetOptsMap():
         "username=", "password=", "use_ssl", "server=",
 
         # Other params
-        "filter_out=", "me=",
+        "filter_out=", "me=", "use_label=",
 
         # Development options
         "record", "replay",
@@ -51,7 +51,10 @@ def GetMessageInfos(opts):
         "random_subset" in opts)
 
     # First, get all message infos
-    m.SelectAllMail()
+    if "use_label" not in opts:
+       m.SelectAllMail()
+    else:
+       m.SelectMailbox(opts["use_label"])
 
     message_infos = m.GetMessageInfos()
 
