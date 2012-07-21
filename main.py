@@ -5,7 +5,7 @@ import logging
 import messageinfo
 import re
 import sys
-
+import datetime
 from Cheetah.Template import Template
 import jwzthreading
 
@@ -21,7 +21,7 @@ def GetOptsMap():
         "username=", "password=", "use_ssl", "server=",
 
         # Other params
-        "filter_out=", "me=", "use_label=",
+        "filter_out=", "me=", "use_label=", "days=","date_from=",
 
         # Development options
         "record", "replay",
@@ -37,7 +37,15 @@ def GetOptsMap():
     if "password" not in opts_map:
         opts_map["password"] = getpass.getpass(
             prompt="Password for %s: " % opts_map["username"])
-
+    # If date_from is not specified then use today as date_from
+    if "date_from" not in opts_map:
+        opts_map["date_from"] = datetime.date.today().strftime("%d-%b-%Y")
+    # If days are not specified then get all (until UNIX epoch)
+    if "days" not in opts_map:
+        opts_map["days"] = (datetime.datetime.today() - datetime.datetime.utcfromtimestamp(0)).days
+    # Add one day to date_from (to include set date in fetch)
+    opts_map["date_from"] = (datetime.datetime.strptime(opts_map["date_from"],"%d-%b-%Y") + datetime.timedelta(1))
+    
     assert "password" in opts_map
     assert "server" in opts_map
 
@@ -45,7 +53,7 @@ def GetOptsMap():
 
 def GetMessageInfos(opts):
     m = mail.Mail(
-        opts["server"], "use_ssl" in opts, opts["username"], opts["password"],
+        opts["server"], "use_ssl" in opts, opts["username"], opts["password"], opts["days"], opts["date_from"],
         "record" in opts, "replay" in opts,
         "max_messages" in opts and int(opts["max_messages"]) or -1,
         "random_subset" in opts)

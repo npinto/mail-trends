@@ -1,17 +1,23 @@
 import imaplib
 import logging
 import random
-
+import datetime
 import cache
 import messageinfo
 import stringscanner
 
 
+
 class Mail(object):
 
-    def __init__(self, server, use_ssl, username, password, record=False,
+    def __init__(self, server, use_ssl, username, password, days, date_from, record=False,
                  replay=False, max_messages=-1, random_subset=False):
 
+        self.__date_to = (date_from - datetime.timedelta(int(days))).strftime("%d-%b-%Y")
+        date_from = date_from.strftime("%d-%b-%Y")
+        search_dates = '(SENTBEFORE {date_from} SENTSINCE {date_to})'.format(date_to=self.__date_to, date_from=date_from)
+        self.__search_dates = search_dates
+        
         self.__server = server
         self.__username = username
         self.__record = record
@@ -108,11 +114,17 @@ class Mail(object):
         logging.info("Fetching message infos")
 
         logging.info("  Fetching message list")
-        data = self.__UidCommand("SEARCH", search_criterion)
+        
+        data = self.__UidCommand("SEARCH", self.__search_dates)
+        #data = self.__UidCommand("SEARCH", '(SENTSINCE {date})'.format(date=self.__dates))
 
         message_ids = data[0].split()
 
         logging.info("  %d messages were listed" % len(message_ids))
+
+        if len(message_ids) == 0:
+            logging.info("Nothing to do - quitting")
+            exit()
 
         if max_fetch != -1 and len(message_ids) > max_fetch:
             if self.__random_subset:
