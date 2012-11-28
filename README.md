@@ -15,7 +15,7 @@ Mail Trends lets you analyze and visualize your email (as extracted from an IMAP
 * Python 2.5 or later
 
 ### Installation
-You will need [Cheetah](http://www.cheetahtemplate.org/) (a template system) installed. You can [download](http://pypi.python.org/packages/source/C/Cheetah/Cheetah-2.4.4.tar.gz) it and then follow the (installation instructions)[http://www.cheetahtemplate.org/docs/users_guide_html_multipage/gettingStarted.install.html]. If you are using an apt-based Linux distribution sudo apt-get install python-cheetah may be enough for you.
+You will need [Cheetah](http://www.cheetahtemplate.org/) (a template system) installed. You can [download](http://pypi.python.org/packages/source/C/Cheetah/Cheetah-2.4.4.tar.gz) it and then follow the [installation instructions](http://www.cheetahtemplate.org/docs/users_guide_html_multipage/gettingStarted.install.html). If you are using an apt-based Linux distribution sudo apt-get install python-cheetah may be enough for you.
 
 ### Running
 From within the mail-trends directory run the following, replacing the username and passwords as appropriate (if you omit the password in the commandline you will be (securely) prompted for it):
