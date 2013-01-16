@@ -40,6 +40,18 @@ You can pass in --record and --replay as command line arguments to respectively 
 
 --max_messages=NNNN can be used to limit the number of messages that are fetched. Normally the most recent messages are selected, use --random_subset to specify that the messages be chosen over all the messages.
 
+--days=NNNN Fetch mail from last NNNN days. If NNNN is omitted then it defaults to all days until the Unix epoch (effectively all mail)
+
+--date_from Fetches mail from date until the the end of the dataset. Format: %d-%b-%Y
+
+Examples:
+
+Fetch mail from last 10 days:
+--days=10
+Fetch all mail between a certain date and the end of the dataset:
+--date_from=12-Apr-2012
+Fetch all mail from a certain date until 10 days earlier:
+--date_from=12-Apr-2012 --day=10
 
 ## History
 Original project hosted at [http://code.google.com/p/mail-trends/](http://code.google.com/p/mail-trends/)
